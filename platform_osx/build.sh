@@ -28,12 +28,15 @@ if [ ! -d "${PLATFORM_ROOT}/../chibios" ];
 then
     cd "${PLATFORM_ROOT}/src"
     CH_VERSION=2.6.9
-    ARDIR=ChibiOS_${CH_VERSION}
+    #ARDIR=ChibiOS_${CH_VERSION}
+    ARDIR=ChibiOS-ver${CH_VERSION}
     ARCHIVE=${ARDIR}.zip
     if [ ! -f ${ARCHIVE} ]; 
     then
         echo "downloading ${ARCHIVE}"
-        curl -L https://sourceforge.net/projects/chibios/files/ChibiOS%20GPL3/Version%20${CH_VERSION}/${ARCHIVE} > ${ARCHIVE}
+        #curl -L https://sourceforge.net/projects/chibios/files/ChibiOS%20GPL3/Version%20${CH_VERSION}/${ARCHIVE} > ${ARCHIVE}
+        curl -L https://github.com/ChibiOS/ChibiOS/archive/ver${CH_VERSION}.zip > ${ARCHIVE}
+
     else
         echo "${ARCHIVE} already downloaded"
     fi
