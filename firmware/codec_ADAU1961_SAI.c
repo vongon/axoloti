@@ -360,36 +360,88 @@ const stm32_dma_stream_t* sai_b_dma;
 void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
   sai_a = SAI1_Block_A;
   sai_b = SAI1_Block_B;
-//configure MCO
-  palSetPadMode(GPIOA, 8, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(0));
-  chThdSleepMilliseconds(10);
+//configure MCO - skipping bc PCM510XA does not need it
+  //palSetPadMode(GPIOA, 8, PAL_MODE_OUTPUT_PUSHPULL);
+  //palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(0));
+  //chThdSleepMilliseconds(10);
 // release SAI
   palSetPadMode(GPIOE, 3, PAL_MODE_INPUT);
   palSetPadMode(GPIOE, 4, PAL_MODE_INPUT);
   palSetPadMode(GPIOE, 5, PAL_MODE_INPUT);
   palSetPadMode(GPIOE, 6, PAL_MODE_INPUT);
 // configure SAI
-  RCC->APB2ENR |= RCC_APB2ENR_SAI1EN;
+
+// configure clock
+// set PLLSAI N->295, 100100111
+//  0000 0000 0000 0000 0100 1001 1100 0000
+  uint32_t pllsai_n = 0x49C0;
+// set PLLSAI Q->3, 0011
+//  0000 0011 0000 0000 0000 0000 0000 0000
+  uint32_t pllsai_q = 0x3000000;
+  uint32_t pllsaicfgr = pllsai_n | pllsai_q;
+  RCC->PLLSAICFGR = pllsaicfgr;
+
+// start clock
+  RCC->APB2ENR |= RCC_APB2ENR_SAI1EN; // SAI1 clock enable
+  RCC->CR |= RCC_CR_PLLSAION; //PLLSAIenable
+
   chThdSleepMilliseconds(1);
-  SAI1_Block_A->CR2 = SAI_xCR2_FTH_1;
-  SAI1_Block_B->CR2 = SAI_xCR2_FTH_1;
-  SAI1_Block_A->FRCR = /*SAI_xFRCR_FSDEF |*/ SAI_xFRCR_FRL_0 | SAI_xFRCR_FRL_1
-      | SAI_xFRCR_FRL_2 | SAI_xFRCR_FRL_3 | SAI_xFRCR_FRL_4 | SAI_xFRCR_FRL_5
-      | SAI_xFRCR_FSALL_0 | SAI_xFRCR_FSALL_1 | SAI_xFRCR_FSALL_2
-      | SAI_xFRCR_FSALL_3 | SAI_xFRCR_FSALL_4 | SAI_xFRCR_FSOFF;
-  SAI1_Block_B->FRCR = /*SAI_xFRCR_FSDEF |*/ SAI_xFRCR_FRL_0 | SAI_xFRCR_FRL_1
-      | SAI_xFRCR_FRL_2 | SAI_xFRCR_FRL_3 | SAI_xFRCR_FRL_4 | SAI_xFRCR_FRL_5
-      | SAI_xFRCR_FSALL_0 | SAI_xFRCR_FSALL_1 | SAI_xFRCR_FSALL_2
-      | SAI_xFRCR_FSALL_3 | SAI_xFRCR_FSALL_4 | SAI_xFRCR_FSOFF;
+  SAI1_Block_A->CR2 = SAI_xCR2_FTH_1; //FIFO Threshold, 1/2 fifo
+  SAI1_Block_B->CR2 = SAI_xCR2_FTH_1; //FIFO Threshold, 1/2 fifo
+  SAI1_Block_A->FRCR = /*SAI_xFRCR_FSDEF |*/ 
+        SAI_xFRCR_FRL_0
+      | SAI_xFRCR_FRL_1
+      | SAI_xFRCR_FRL_2 
+      | SAI_xFRCR_FRL_3 
+      | SAI_xFRCR_FRL_4 
+      | SAI_xFRCR_FRL_5 // Frame length == 32 bits
+      | SAI_xFRCR_FSALL_0 
+      | SAI_xFRCR_FSALL_1 
+      | SAI_xFRCR_FSALL_2
+      | SAI_xFRCR_FSALL_3 
+      | SAI_xFRCR_FSALL_4 // SCK = 32 bits per frame
+      | SAI_xFRCR_FSOFF; //FS is asserted one bit before the first bit of the slot 0.
+  SAI1_Block_B->FRCR = /*SAI_xFRCR_FSDEF |*/ 
+        SAI_xFRCR_FRL_0 
+      | SAI_xFRCR_FRL_1
+      | SAI_xFRCR_FRL_2 
+      | SAI_xFRCR_FRL_3 
+      | SAI_xFRCR_FRL_4 
+      | SAI_xFRCR_FRL_5 // Frame length == 32 bits
+      | SAI_xFRCR_FSALL_0 
+      | SAI_xFRCR_FSALL_1 
+      | SAI_xFRCR_FSALL_2
+      | SAI_xFRCR_FSALL_3 
+      | SAI_xFRCR_FSALL_4 // SCK = 32 bits per frame
+      | SAI_xFRCR_FSOFF; //FS is asserted one bit before the first bit of the slot 0.
   SAI1_Block_A->SLOTR = (3 << 16) | SAI_xSLOTR_NBSLOT_0;
   SAI1_Block_B->SLOTR = (3 << 16) | SAI_xSLOTR_NBSLOT_0;
+
+// CR1 MODE Notes
+// 00: Master transmitter - 0x00
+// 01: Master receiver - SAI_xCR1_MODE_0
+// 10: Slave transmitter - SAI_xCR1_MODE_1
+// 11: Slave receiver - SAI_xCR1_MODE_0 | SAI_xCR1_MODE_1
+
 // SAI1_A is slave transmitter
 // SAI1_B is synchronous slave receiver
-  SAI1_Block_A->CR1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2
-      | SAI_xCR1_MODE_1 | SAI_xCR1_DMAEN | SAI_xCR1_CKSTR;
-  SAI1_Block_B->CR1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2
-      | SAI_xCR1_SYNCEN_0 | SAI_xCR1_MODE_1 | SAI_xCR1_MODE_0 | SAI_xCR1_DMAEN | SAI_xCR1_CKSTR;
+  uint32_t block_a_cr1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2 //32bit
+      //| SAI_xCR1_MODE_1   //mode
+      //| SAI_xCR1_NODIV    //no divide set
+      | SAI_xCR1_DMAEN      //dma enable
+      | SAI_xCR1_CKSTR     //data strobing edge is rising edge of SCK
+      | SAI_xCR1_MCKDIV_3;  //48khz master clock divider
+  SAI1_Block_A->CR1 = block_a_cr1;
+
+  uint32_t block_b_cr1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2
+      | SAI_xCR1_SYNCEN_0 //audio block is synchronous with the other internal audio block. In this case audio block should be configured in Slave mode
+      | SAI_xCR1_MODE_1 | SAI_xCR1_MODE_0 // mode
+      | SAI_xCR1_NODIV  //no divide set
+      | SAI_xCR1_MODE_0 // mode
+      | SAI_xCR1_DMAEN  //dma enable
+      | SAI_xCR1_CKSTR; //data strobing edge is rising edge of SCK
+  SAI1_Block_B->CR1 = block_b_cr1;
+
   chThdSleepMilliseconds(1);
   palSetPadMode(GPIOE, 3, PAL_MODE_ALTERNATE(6));
   palSetPadMode(GPIOE, 4, PAL_MODE_ALTERNATE(6));
@@ -441,7 +493,15 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
   dmaStreamEnable(sai_a_dma);
 
   SAI1_Block_A->CR1 |= SAI_xCR1_SAIEN;
-  SAI1_Block_B->CR1 |= SAI_xCR1_SAIEN;
+  SAI1_Block_B->CR1 |= SAI_xCR1_SAIEN; //dont enable block B becuase thats for the ADC
+  uint32_t rcc_cr = RCC->CR;
+  uint32_t RCC_PLLCFGR = RCC->PLLCFGR;
+  uint32_t RCC_CFGR = RCC->CFGR;
+  uint32_t RCC_PLLI2SCFGR = RCC->PLLI2SCFGR;
+  uint32_t RCC_PLLSAICFGR = RCC->PLLSAICFGR;
+  uint32_t SAI1_CR1 = SAI1_Block_A->CR1;
+  uint32_t RCC_DCKCFGR = RCC->DCKCFGR;
+  chThdSleepMilliseconds(1);
 
 }
 

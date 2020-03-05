@@ -24,6 +24,8 @@
 
 #include "codec.h"
 #include "codec_CS43L22.h"
+#include "stm32f4xx.h"
+
 
 const stm32_dma_stream_t* i2sdma;
 static uint32_t i2stxdmamode = 0;
@@ -122,10 +124,23 @@ static void codec_CS43L22_dma_init(void) {
 }
 
 void codec_CS43L22_i2s_init_48k(void) {
+  // PA4, PA15 - SPI3_I2S3_WS
+  // PC10, PB3 - SPI3_I2S3_SCK
+  // PC12, PD6, PB5 - SPI3_I2S3_SD
+
+  // PC3, PB15, PI3 - SPI2_I2S2_SD
+  // PB10, PB13, PI1 - SPI2_I2S2_SCK
+  // PB12, PI0, PB9 - SPI2_I2S2_WS
+  // PD3 - SPI2_I2S2_CK?
+
   palSetPadMode(GPIOA, 4, PAL_MODE_OUTPUT_PUSHPULL);
   palSetPadMode(GPIOA, 4, PAL_MODE_ALTERNATE(6));
   palSetPadMode(GPIOC, 10, PAL_MODE_ALTERNATE(6));
   palSetPadMode(GPIOC, 12, PAL_MODE_ALTERNATE(6));
+  //palSetPadMode(GPIOA, 15, PAL_MODE_OUTPUT_PUSHPULL);
+  //palSetPadMode(GPIOA, 15, PAL_MODE_ALTERNATE(6));
+  //palSetPadMode(GPIOB, 3, PAL_MODE_ALTERNATE(6));
+  //palSetPadMode(GPIOD, 6, PAL_MODE_ALTERNATE(6));
 
 // SPI3 in I2S Mode, Master
   CODEC_I2S_ENABLE;
@@ -135,6 +150,13 @@ void codec_CS43L22_i2s_init_48k(void) {
   codec_CS43L22_dma_init();
   CODEC_I2S->CR2 = SPI_CR2_TXDMAEN;
   CODEC_I2S->I2SCFGR |= SPI_I2SCFGR_I2SE;
+  uint32_t rcc_cr = RCC->CR;
+  uint32_t RCC_PLLCFGR = RCC->PLLCFGR;
+  uint32_t RCC_CFGR = RCC->CFGR;
+  uint32_t RCC_PLLI2SCFGR = RCC->PLLI2SCFGR;
+  uint32_t RCC_PLLSAICFGR = RCC->PLLSAICFGR;
+  uint32_t dump = rcc_cr ^ RCC_PLLCFGR ^ RCC_CFGR ^ RCC_PLLI2SCFGR ^ RCC_PLLSAICFGR;
+  chThdSleepMilliseconds(1);
 }
 
 void codec_CS43L22_writeReg(uint8_t addr, uint8_t data) {

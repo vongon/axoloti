@@ -539,7 +539,10 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
   CODEC_ADAU1961_I2S_ENABLE;
 
 #if STM_IS_I2S_MASTER
-  CODEC_ADAU1961_I2S ->I2SCFGR = SPI_I2SCFGR_I2SMOD | SPI_I2SCFGR_I2SCFG_1 | SPI_I2SCFGR_DATLEN_1; /* MASTER TRANSMIT */
+  CODEC_ADAU1961_I2S ->I2SCFGR = 
+  SPI_I2SCFGR_I2SMOD // I2S mode for this SPI peripheral
+  | SPI_I2SCFGR_I2SCFG_1 // master - transmit
+  | SPI_I2SCFGR_DATLEN_1; // 32bit data length
 
   uint16_t prescale;
   uint32_t pllfreq = STM32_PLLI2SVCO / STM32_PLLI2SR_VALUE;
@@ -550,12 +553,22 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
   if (prescale > 0xFF || prescale < 2)
   prescale = 2;
 
-  if (prescale & 0x01)
-  CODEC_ADAU1961_I2S ->I2SPR = SPI_I2SPR_MCKOE | SPI_I2SPR_ODD | (prescale >> 1);
-  else
-  CODEC_ADAU1961_I2S ->I2SPR = SPI_I2SPR_MCKOE | (prescale >> 1);
+  if (prescale & 0x01) {
+    CODEC_ADAU1961_I2S ->I2SPR = 
+    SPI_I2SPR_MCKOE // master clock enable
+    | SPI_I2SPR_ODD 
+    | (prescale >> 1);
+  }
+  else {
+    CODEC_ADAU1961_I2S ->I2SPR = 
+    SPI_I2SPR_MCKOE // master clock enable
+    | (prescale >> 1);
+  }
 
-  CODEC_ADAU1961_I2Sext ->I2SCFGR = SPI_I2SCFGR_I2SMOD | SPI_I2SCFGR_I2SCFG_0 | SPI_I2SCFGR_DATLEN_1; /* SLAVE RECEIVE*/
+  CODEC_ADAU1961_I2Sext ->I2SCFGR = 
+      SPI_I2SCFGR_I2SMOD  // I2S mode for this SPI peripheral
+    | SPI_I2SCFGR_I2SCFG_0 // slave - receive
+    | SPI_I2SCFGR_DATLEN_1; // 32bit data length
   CODEC_ADAU1961_I2Sext ->I2SPR = 0x0002;
 
 #else

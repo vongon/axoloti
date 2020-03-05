@@ -29,6 +29,7 @@ typedef int32_t int32buffer[BUFSIZE];
 //#define BOARD_STM32F4DISCOVERY 1
 //#define BOARD_AXOLOTI_V03 1
 #define BOARD_AXOLOTI_V05 1
+#define BOARD_STM32F429DISC 1
 
 // firmware version 1.0.0.1
 #define FWVERSION1 1
@@ -39,6 +40,8 @@ typedef int32_t int32buffer[BUFSIZE];
 #if (BOARD_STM32F4DISCOVERY)
 #elif (BOARD_AXOLOTI_V03)
 #elif (BOARD_AXOLOTI_V05)
+#elif (BOARD_STM32F429DISC && !BOARD_AXOLOTI_V05)
+#error BOARD_STM32F429DISC needs BOARD_AXOLOTI_V05 enabled as well!
 #else
 #error Must define board!
 #endif
