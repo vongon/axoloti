@@ -65,6 +65,27 @@ void SDRAM_Init(void) {
   /* Enable FMC clock */
   rccEnableAHB3(RCC_AHB3ENR_FMCEN, FALSE);
 
+#if (BOARD_STM32F429DISC)
+  void __attribute__((optimize("O0"))) test() {
+    uint32_t _ahb1enr = RCC->AHB1ENR;
+  };
+  test();
+  palSetPadMode(GPIOC, 2, PAL_MODE_ALTERNATE(12)); // Bank1 CS
+  GPIOC->OSPEEDR |= (0b11 << (2*2));
+  palSetPadMode(GPIOC, 0, PAL_MODE_ALTERNATE(12)); // Bank2 WE
+  GPIOC->OSPEEDR |= (0b11 << (2*0));
+  palSetPadMode(GPIOF, 11, PAL_MODE_ALTERNATE(12)); // RAS
+  GPIOF->OSPEEDR |= (0b11 << (2*11));
+  palSetPadMode(GPIOG, 15, PAL_MODE_ALTERNATE(12)); // CAS
+  GPIOG->OSPEEDR |= (0b11 << (2*15));
+  palSetPadMode(GPIOG, 8, PAL_MODE_ALTERNATE(12)); // CLK
+  GPIOG->OSPEEDR |= (0b11 << (2*8));
+  palSetPadMode(GPIOB, 5, PAL_MODE_ALTERNATE(12)); // Bank2 CKE
+  GPIOB->OSPEEDR |= (0b11 << (2*5));
+  palSetPadMode(GPIOB, 6, PAL_MODE_ALTERNATE(12)); // Bank2 CS
+  GPIOB->OSPEEDR |= (0b11 << (2*6));
+#endif
+
   /* FMC Configuration ---------------------------------------------------------*/
   /* FMC SDRAM Bank configuration */
   /* Timing configuration for 84 Mhz of SD clock frequency (168Mhz/2) */
@@ -84,7 +105,7 @@ void SDRAM_Init(void) {
   FMC_SDRAMTimingInitStructure.FMC_RCDDelay = 2;
 
   /* FMC SDRAM control configuration */
-  FMC_SDRAMInitStructure.FMC_Bank = FMC_Bank1_SDRAM;
+  FMC_SDRAMInitStructure.FMC_Bank = SDRAM_BANK;
   /* Row addressing: [7:0] */
   FMC_SDRAMInitStructure.FMC_ColumnBitsNumber = FMC_ColumnBits_Number_8b;
   /* Column addressing: [11:0] */
@@ -127,9 +148,10 @@ void configSDRAM(void) {
 }
 
 void memTest(void) {
-  int memSize = 8 * 1024 * 1024; // 8MB
+  //int memSize = 8 * 1024 * 1024; // 8MB
+  int memSize = 8; // reduce while testing
   void *base;
-  base = (void *)0xC0000000;
+  base = SDRAM_BANK_ADDR;
   int i;
   // 4MB test
   const uint32_t a = 22695477;
@@ -138,6 +160,8 @@ void memTest(void) {
   volatile int iter = 0;
   volatile int niter = 16;
   volatile int niter2 = 16;
+
+  uint32_t tmp = -1;
   // linear write with linear congruential generator values
   // 362 ms execution cycle at 8MB : 22MB/s read+write+compute
   for (iter = 0; iter < niter; iter++) {
@@ -152,8 +176,9 @@ void memTest(void) {
     x = iter;
     for (i = 0; i < memSize / 4; i++) {
       x = (a * x) + c;
-      if (((volatile uint32_t *)base)[i] != x) {
-        setErrorFlag(ERROR_SDRAM);
+      tmp = ((volatile uint32_t *)base)[i];
+      if (tmp != x) {
+        //setErrorFlag(ERROR_SDRAM);
         while (1) {
           chThdSleepMilliseconds(100);
         }
@@ -163,25 +188,27 @@ void memTest(void) {
   // scattered byte write at linear congruential generator addresses
   // 300 ms execution time for one iteration: 3.3M scattered read+write per second
   // equals 68
-  for (iter = 0; iter < niter2; iter++) {
-    uint32_t x = iter;
-    // write
-    for (i = 0; i < 1024 * 1024; i++) {
-      x = (a * x) + c;
-      ((volatile uint8_t *)base)[x & (memSize - 1)] = (uint8_t)i;
-    }
-    // read/verify
-    x = iter;
-    for (i = 0; i < 1024 * 1024; i++) {
-      x = (a * x) + c;
-      if (((volatile uint8_t *)base)[x & (memSize - 1)] != (uint8_t)i) {
-        setErrorFlag(ERROR_SDRAM);
-        while (1) {
-          chThdSleepMilliseconds(100);
-        }
-      }
-    }
-  }
+
+  // THIS DOES NOT WORK FOR DECREASED MEM SIZE
+  // for (iter = 0; iter < niter2; iter++) {
+  //   uint32_t x = iter;
+  //   // write
+  //   for (i = 0; i < 1024 * 1024; i++) {
+  //     x = (a * x) + c;
+  //     ((volatile uint8_t *)base)[x & (memSize - 1)] = (uint8_t)i;
+  //   }
+  //   // read/verify
+  //   x = iter;
+  //   for (i = 0; i < 1024 * 1024; i++) {
+  //     x = (a * x) + c;
+  //     if (((volatile uint8_t *)base)[x & (memSize - 1)] != (uint8_t)i) {
+  //       //setErrorFlag(ERROR_SDRAM);
+  //       while (1) {
+  //         chThdSleepMilliseconds(100);
+  //       }
+  //     }
+  //   }
+  // }
 }
 
 /**
@@ -196,11 +223,11 @@ void SDRAM_InitSequence(void) {
   /* Step 3 --------------------------------------------------------------------*/
   /* Configure a clock configuration enable command */
   FMC_SDRAMCommandStructure.FMC_CommandMode = FMC_Command_Mode_CLK_Enabled;
-  FMC_SDRAMCommandStructure.FMC_CommandTarget = FMC_Command_Target_bank1;
+  FMC_SDRAMCommandStructure.FMC_CommandTarget = _FMC_Command_Target;
   FMC_SDRAMCommandStructure.FMC_AutoRefreshNumber = 1;
   FMC_SDRAMCommandStructure.FMC_ModeRegisterDefinition = 0;
   /* Wait until the SDRAM controller is ready */
-  while (FMC_GetFlagStatus(FMC_Bank1_SDRAM, FMC_FLAG_Busy) != RESET) {
+  while (FMC_GetFlagStatus(SDRAM_BANK, FMC_FLAG_Busy) != RESET) {
   }
   /* Send the command */
   FMC_SDRAMCmdConfig(&FMC_SDRAMCommandStructure);
@@ -210,17 +237,17 @@ void SDRAM_InitSequence(void) {
   //refresh interval, meaning we won't risk losing contents if the SDRAM is in self-refresh
   //mode
   /* Step 4 --------------------------------------------------------------------*/
-  /* Insert 1 ms delay */
-  chThdSleepMilliseconds(1);
+  /* Insert 100 ms delay */
+  chThdSleepMilliseconds(100);
 
   /* Step 5 --------------------------------------------------------------------*/
   /* Configure a PALL (precharge all) command */
   FMC_SDRAMCommandStructure.FMC_CommandMode = FMC_Command_Mode_PALL;
-  FMC_SDRAMCommandStructure.FMC_CommandTarget = FMC_Command_Target_bank1;
+  FMC_SDRAMCommandStructure.FMC_CommandTarget = _FMC_Command_Target;
   FMC_SDRAMCommandStructure.FMC_AutoRefreshNumber = 1;
   FMC_SDRAMCommandStructure.FMC_ModeRegisterDefinition = 0;
   /* Wait until the SDRAM controller is ready */
-  while (FMC_GetFlagStatus(FMC_Bank1_SDRAM, FMC_FLAG_Busy) != RESET) {
+  while (FMC_GetFlagStatus(SDRAM_BANK, FMC_FLAG_Busy) != RESET) {
   }
   /* Send the command */
   FMC_SDRAMCmdConfig(&FMC_SDRAMCommandStructure);
@@ -228,17 +255,17 @@ void SDRAM_InitSequence(void) {
   /* Step 6 --------------------------------------------------------------------*/
   /* Configure a Auto-Refresh command */
   FMC_SDRAMCommandStructure.FMC_CommandMode = FMC_Command_Mode_AutoRefresh;
-  FMC_SDRAMCommandStructure.FMC_CommandTarget = FMC_Command_Target_bank1;
-  FMC_SDRAMCommandStructure.FMC_AutoRefreshNumber = 4;
+  FMC_SDRAMCommandStructure.FMC_CommandTarget = _FMC_Command_Target;
+  FMC_SDRAMCommandStructure.FMC_AutoRefreshNumber = 4; //8?
   FMC_SDRAMCommandStructure.FMC_ModeRegisterDefinition = 0;
   /* Wait until the SDRAM controller is ready */
-  while (FMC_GetFlagStatus(FMC_Bank1_SDRAM, FMC_FLAG_Busy) != RESET) {
+  while (FMC_GetFlagStatus(SDRAM_BANK, FMC_FLAG_Busy) != RESET) {
   }
   /* Send the  first command */
   FMC_SDRAMCmdConfig(&FMC_SDRAMCommandStructure);
 
   /* Wait until the SDRAM controller is ready */
-  while (FMC_GetFlagStatus(FMC_Bank1_SDRAM, FMC_FLAG_Busy) != RESET) {
+  while (FMC_GetFlagStatus(SDRAM_BANK, FMC_FLAG_Busy) != RESET) {
   }
   /* Send the second command */
   FMC_SDRAMCmdConfig(&FMC_SDRAMCommandStructure);
@@ -247,17 +274,17 @@ void SDRAM_InitSequence(void) {
   /* Program the external memory mode register */
   tmpr = (uint32_t)SDRAM_MODEREG_BURST_LENGTH_2 |
   SDRAM_MODEREG_BURST_TYPE_SEQUENTIAL |
-  SDRAM_MODEREG_CAS_LATENCY_2 |
+  SDRAM_MODE_REG_CAS_LATENCY |
   SDRAM_MODEREG_OPERATING_MODE_STANDARD |
   SDRAM_MODEREG_WRITEBURST_MODE_SINGLE;
 
   /* Configure a load Mode register command*/
   FMC_SDRAMCommandStructure.FMC_CommandMode = FMC_Command_Mode_LoadMode;
-  FMC_SDRAMCommandStructure.FMC_CommandTarget = FMC_Command_Target_bank1;
+  FMC_SDRAMCommandStructure.FMC_CommandTarget = _FMC_Command_Target;
   FMC_SDRAMCommandStructure.FMC_AutoRefreshNumber = 1;
   FMC_SDRAMCommandStructure.FMC_ModeRegisterDefinition = tmpr;
   /* Wait until the SDRAM controller is ready */
-  while (FMC_GetFlagStatus(FMC_Bank1_SDRAM, FMC_FLAG_Busy) != RESET) {
+  while (FMC_GetFlagStatus(SDRAM_BANK, FMC_FLAG_Busy) != RESET) {
   }
   /* Send the command */
   FMC_SDRAMCmdConfig(&FMC_SDRAMCommandStructure);
@@ -267,12 +294,23 @@ void SDRAM_InitSequence(void) {
   /* Set the refresh rate counter */
   /* (7.81 us x Freq) - 20 */
   /* Set the device refresh counter */
-  FMC_SetRefreshCount(683);
+  FMC_SetRefreshCount(SDRAM_REFRESHCOUNT);
   /* Wait until the SDRAM controller is ready */
-  while (FMC_GetFlagStatus(FMC_Bank1_SDRAM, FMC_FLAG_Busy) != RESET) {
+  while (FMC_GetFlagStatus(SDRAM_BANK, FMC_FLAG_Busy) != RESET) {
   }
 
-  FMC_SDRAMWriteProtectionConfig(FMC_Bank1_SDRAM, DISABLE);
+  FMC_SDRAMWriteProtectionConfig(SDRAM_BANK, DISABLE); //diff
+
+
+  void __attribute__((optimize("O0"))) test() {
+    uint32_t GPIOG_MODER = GPIOG->MODER;
+    uint32_t GPIOG_OTYPER = GPIOG->OTYPER;
+    uint32_t GPIOG_OSPEEDR = GPIOG->OSPEEDR;
+    uint32_t GPIOG_PUPDR = GPIOG->PUPDR;
+    uint32_t GPIOG_AFRH = GPIOG->AFRH;
+  };
+  test();
+  chThdSleepMilliseconds(1);
 }
 
 /**
@@ -289,10 +327,10 @@ void SDRAM_WriteBuffer(uint32_t* pBuffer, uint32_t uwWriteAddress,
   write_pointer = (uint32_t)uwWriteAddress;
 
   /* Disable write protection */
-  FMC_SDRAMWriteProtectionConfig(FMC_Bank1_SDRAM, DISABLE);
+  FMC_SDRAMWriteProtectionConfig(SDRAM_BANK, DISABLE);
 
   /* Wait until the SDRAM controller is ready */
-  while (FMC_GetFlagStatus(FMC_Bank1_SDRAM, FMC_FLAG_Busy) != RESET) {
+  while (FMC_GetFlagStatus(SDRAM_BANK, FMC_FLAG_Busy) != RESET) {
   }
 
   /* While there is data to write */
@@ -320,7 +358,7 @@ void SDRAM_ReadBuffer(uint32_t* pBuffer, uint32_t uwReadAddress,
   write_pointer = (uint32_t)uwReadAddress;
 
   /* Wait until the SDRAM controller is ready */
-  while (FMC_GetFlagStatus(FMC_Bank1_SDRAM, FMC_FLAG_Busy) != RESET) {
+  while (FMC_GetFlagStatus(SDRAM_BANK, FMC_FLAG_Busy) != RESET) {
   }
 
   /* Read data */

@@ -361,29 +361,38 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
   sai_a = SAI1_Block_A;
   sai_b = SAI1_Block_B;
 //configure MCO - skipping bc PCM510XA does not need it
-  //palSetPadMode(GPIOA, 8, PAL_MODE_OUTPUT_PUSHPULL);
-  //palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(0));
-  //chThdSleepMilliseconds(10);
+#if(!BOARD_STM32F429DISC)
+  palSetPadMode(GPIOA, 8, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(0));
+  chThdSleepMilliseconds(10);
+#elif(BOARD_STM32F429DISC)
+// release SAI
+  palSetPadMode(GPIOE, 2, PAL_MODE_INPUT);
+#endif
 // release SAI
   palSetPadMode(GPIOE, 3, PAL_MODE_INPUT);
   palSetPadMode(GPIOE, 4, PAL_MODE_INPUT);
   palSetPadMode(GPIOE, 5, PAL_MODE_INPUT);
   palSetPadMode(GPIOE, 6, PAL_MODE_INPUT);
+
 // configure SAI
 
 // configure clock
-// set PLLSAI N->295, 100100111
-//  0000 0000 0000 0000 0100 1001 1100 0000
-  uint32_t pllsai_n = 0x49C0;
-// set PLLSAI Q->3, 0011
-//  0000 0011 0000 0000 0000 0000 0000 0000
-  uint32_t pllsai_q = 0x3000000;
+#if(BOARD_STM32F429DISC)
+// set PLLSAI N->344, (0x158<<6)
+  uint32_t pllsai_n = (0x158<<6);
+// set PLLSAI Q->7, (0x7<<24)
+  uint32_t pllsai_q = (0x7<<24);
+
   uint32_t pllsaicfgr = pllsai_n | pllsai_q;
   RCC->PLLSAICFGR = pllsaicfgr;
-
+#endif
 // start clock
   RCC->APB2ENR |= RCC_APB2ENR_SAI1EN; // SAI1 clock enable
+
+#if(BOARD_STM32F429DISC)
   RCC->CR |= RCC_CR_PLLSAION; //PLLSAIenable
+#endif
 
   chThdSleepMilliseconds(1);
   SAI1_Block_A->CR2 = SAI_xCR2_FTH_1; //FIFO Threshold, 1/2 fifo
@@ -425,24 +434,31 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
 
 // SAI1_A is slave transmitter
 // SAI1_B is synchronous slave receiver
+#if(BOARD_STM32F429DISC)
   uint32_t block_a_cr1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2 //32bit
-      //| SAI_xCR1_MODE_1   //mode
-      //| SAI_xCR1_NODIV    //no divide set
       | SAI_xCR1_DMAEN      //dma enable
       | SAI_xCR1_CKSTR     //data strobing edge is rising edge of SCK
-      | SAI_xCR1_MCKDIV_3;  //48khz master clock divider
+      | SAI_xCR1_MCKDIV_2;  //Master Clock div = 2*2 -> 4
+#else
+  uint32_t block_a_cr1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2
+    | SAI_xCR1_MODE_1 | SAI_xCR1_DMAEN | SAI_xCR1_CKSTR;
+#endif
   SAI1_Block_A->CR1 = block_a_cr1;
 
   uint32_t block_b_cr1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2
       | SAI_xCR1_SYNCEN_0 //audio block is synchronous with the other internal audio block. In this case audio block should be configured in Slave mode
       | SAI_xCR1_MODE_1 | SAI_xCR1_MODE_0 // mode
-      | SAI_xCR1_NODIV  //no divide set
       | SAI_xCR1_MODE_0 // mode
       | SAI_xCR1_DMAEN  //dma enable
       | SAI_xCR1_CKSTR; //data strobing edge is rising edge of SCK
   SAI1_Block_B->CR1 = block_b_cr1;
 
   chThdSleepMilliseconds(1);
+
+#if(BOARD_STM32F429DISC)
+  palSetPadMode(GPIOE, 2, PAL_MODE_ALTERNATE(6));
+  GPIOE->OSPEEDR |= (0b11 << (2*2));
+#endif
   palSetPadMode(GPIOE, 3, PAL_MODE_ALTERNATE(6));
   palSetPadMode(GPIOE, 4, PAL_MODE_ALTERNATE(6));
   palSetPadMode(GPIOE, 5, PAL_MODE_ALTERNATE(6));
@@ -493,7 +509,9 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
   dmaStreamEnable(sai_a_dma);
 
   SAI1_Block_A->CR1 |= SAI_xCR1_SAIEN;
-  SAI1_Block_B->CR1 |= SAI_xCR1_SAIEN; //dont enable block B becuase thats for the ADC
+  SAI1_Block_B->CR1 |= SAI_xCR1_SAIEN;
+
+  /* debugging data */
   uint32_t rcc_cr = RCC->CR;
   uint32_t RCC_PLLCFGR = RCC->PLLCFGR;
   uint32_t RCC_CFGR = RCC->CFGR;
@@ -501,6 +519,7 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
   uint32_t RCC_PLLSAICFGR = RCC->PLLSAICFGR;
   uint32_t SAI1_CR1 = SAI1_Block_A->CR1;
   uint32_t RCC_DCKCFGR = RCC->DCKCFGR;
+  
   chThdSleepMilliseconds(1);
 
 }

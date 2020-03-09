@@ -58,11 +58,17 @@ extern "C" {
 
   /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx.h"
+#include "axoloti_defines.h"
 
-  /**
-   * @brief  FMC SDRAM Bank address
-   */
-#define SDRAM_BANK_ADDR     ((uint32_t)0xC0000000)
+#if (BOARD_STM32F429DISC)
+#define SDRAM_BANK FMC_Bank2_SDRAM
+#define _FMC_Command_Target FMC_Command_Target_bank1_2
+#define SDRAM_BANK_ADDR     ((uint32_t)0xD0000000)
+#else
+#define SDRAM_BANK FMC_Bank1_SDRAM
+#define _FMC_Command_Target FMC_Command_Target_bank1
+#define SDRAM_BANK_ADDR     ((uint32_t)0xC0000000) 
+#endif
 
   /**
    * @brief  FMC SDRAM Memory Width
@@ -73,20 +79,48 @@ extern "C" {
   /**
    * @brief  FMC SDRAM CAS Latency
    */
-  /* #define SDRAM_CAS_LATENCY   FMC_CAS_Latency_2  */
+#if (BOARD_STM32F429DISC)
+#define SDRAM_CAS_LATENCY   FMC_CAS_Latency_3
+#define SDRAM_MODE_REG_CAS_LATENCY SDRAM_MODEREG_CAS_LATENCY_3
+#else
 #define SDRAM_CAS_LATENCY    FMC_CAS_Latency_2
+#define SDRAM_MODE_REG_CAS_LATENCY SDRAM_MODEREG_CAS_LATENCY_2
+#endif
 
   /**
    * @brief  FMC SDRAM Memory clock period
    */
-#define SDCLOCK_PERIOD    FMC_SDClock_Period_2        /* Default configuration used with LCD */
-  /* #define SDCLOCK_PERIOD    FMC_SDClock_Period_3 */
+#if (BOARD_STM32F429DISC)
+#define SDCLOCK_PERIOD    FMC_SDClock_Period_3
+#else
+#define SDCLOCK_PERIOD    FMC_SDClock_Period_2
+#endif
 
   /**
    * @brief  FMC SDRAM Memory Read Burst feature
    */
+#if (BOARD_STM32F429DISC)
+#define SDRAM_READBURST    FMC_Read_Burst_Disable
+#else
 #define SDRAM_READBURST    FMC_Read_Burst_Enable
-/*#define SDRAM_READBURST    FMC_Read_Burst_Disable*/    /* Default configuration used with LCD */
+#endif
+
+  /**
+   * @brief  FMC SDRAM Refresh Count
+   * Refresh rate = (SDRAM refresh rate × SDRAM clock frequency) – 20
+   * SDRAM refresh rate = SDRAM refresh period ⁄ Number of rows
+   * example:
+   * SDRAM refresh rate = 64 ms ⁄ (8196rows) = 7.81μs where 64 ms is the SDRAM refresh period.
+   * (7.81μs × 60MHz) - 20 = 468.6 - 20 = 448
+   */
+#if (BOARD_STM32F429DISC)
+/* SDRAM refresh counter (90MHz SDRAM clock) */
+#define SDRAM_REFRESHCOUNT    1386
+#else
+/* (7.81 us x Freq) - 20 */
+#define SDRAM_REFRESHCOUNT    683
+
+#endif
 
   /**
    * @brief  FMC SDRAM Mode definition register defines
