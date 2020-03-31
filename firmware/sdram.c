@@ -84,6 +84,19 @@ void SDRAM_Init(void) {
   GPIOB->OSPEEDR |= (0b11 << (2*5));
   palSetPadMode(GPIOB, 6, PAL_MODE_ALTERNATE(12)); // Bank2 CS
   GPIOB->OSPEEDR |= (0b11 << (2*6));
+#elif(BOARD_AXO)
+  palSetPadMode(GPIOC, 2, PAL_MODE_ALTERNATE(12)); // Bank1 CS
+  GPIOC->OSPEEDR |= (0b11 << (2*2));
+  palSetPadMode(GPIOC, 0, PAL_MODE_ALTERNATE(12)); // Bank1+2 WE
+  GPIOC->OSPEEDR |= (0b11 << (2*0));
+  palSetPadMode(GPIOC, 3, PAL_MODE_ALTERNATE(12)); // Bank2 CKE
+  GPIOC->OSPEEDR |= (0b11 << (2*3));
+  palSetPadMode(GPIOF, 11, PAL_MODE_ALTERNATE(12)); // RAS
+  GPIOF->OSPEEDR |= (0b11 << (2*11));
+  palSetPadMode(GPIOG, 15, PAL_MODE_ALTERNATE(12)); // CAS
+  GPIOG->OSPEEDR |= (0b11 << (2*15));
+  palSetPadMode(GPIOG, 8, PAL_MODE_ALTERNATE(12)); // CLK
+  GPIOG->OSPEEDR |= (0b11 << (2*8));
 #endif
 
   /* FMC Configuration ---------------------------------------------------------*/
@@ -130,7 +143,7 @@ void SDRAM_Init(void) {
 void configSDRAM(void) {
   SDRAM_Init();
 
-#if 0
+#if 1
   int qsource[16];
   int qdest[16];
 
@@ -144,12 +157,13 @@ void configSDRAM(void) {
     qdest[i] = 0;
   }
   SDRAM_ReadBuffer(&qdest[0], 0, 16);
+  chThdSleepMilliseconds(1);
 #endif
 }
 
 void memTest(void) {
-  //int memSize = 8 * 1024 * 1024; // 8MB
-  int memSize = 8; // reduce while testing
+  int memSize = 8 * 1024 * 1024; // 8MB
+  //int memSize = 8; // reduce while testing
   void *base;
   base = SDRAM_BANK_ADDR;
   int i;
@@ -232,7 +246,7 @@ void SDRAM_InitSequence(void) {
   /* Send the command */
   FMC_SDRAMCmdConfig(&FMC_SDRAMCommandStructure);
 
-  //In the ST example, this is 100ms, but the 429 RM says 100us is typical, and
+  //In the ST example, this is 100ms, but the 429 Reference Manual says 100us is typical, and
   //the ISSI datasheet confirms this. 1ms seems plenty, and is much shorter than
   //refresh interval, meaning we won't risk losing contents if the SDRAM is in self-refresh
   //mode

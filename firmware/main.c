@@ -24,7 +24,7 @@
 #endif
 
 #include "ch.h"
-#include "hal.h"
+#include "hal.h" 
 #include "chprintf.h"
 #include "shell.h"
 #include "string.h"
@@ -137,7 +137,7 @@ int main(void) {
 #endif
   ui_init();
 
-#if (BOARD_AXOLOTI_V05)
+#if (BOARD_AXOLOTI_V05 && !BOARD_SELECTOR)
   configSDRAM();
   //memTest();
 #endif

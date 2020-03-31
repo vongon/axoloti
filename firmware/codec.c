@@ -41,7 +41,7 @@ void codec_init(void) {
   //codec_CS43L22_hw_init();
   //codec_CS43L22_pwrCtl(1);
   
-#elif (BOARD_STM32F429DISC)
+#elif (BOARD_STM32F429DISC || BOARD_SELECTOR)
   codec_ADAU1961_i2s_init(SAMPLERATE);
 #elif ((BOARD_AXOLOTI_V03)||(BOARD_AXOLOTI_V05))
   codec_ADAU1961_i2s_init(SAMPLERATE);

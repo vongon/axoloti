@@ -45,21 +45,32 @@ int codec_interrupt_timestamp;
 void codec_ADAU1961_hw_reset(void) {
 }
 
-/* I2C interface #3 */
-/* SDA : PH8
- * SCL : PH7
- */
+
 static const I2CConfig i2cfg2 = {OPMODE_I2C, 100000, STD_DUTY_CYCLE, };
 
 static uint8_t i2crxbuf[8];
 static uint8_t i2ctxbuf[8];
 static systime_t tmo;
 
+#if (BOARD_AXO)
+  /* I2C interface #2
+  * SDA : PB11
+  * SCL : PB10
+  */
+  #define I2CD I2CD2
+#else
+  /* I2C interface #3
+  * SDA : PH8
+  * SCL : PH7
+  */
+  #define I2CD I2CD3
+#endif
+
 #define ADAU1961_I2C_ADDR (0x70>>1)
 
 void CheckI2CErrors(void) {
   volatile i2cflags_t errors;
-  errors = i2cGetErrors(&I2CD3);
+  errors = i2cGetErrors(&I2CD);
   if (errors != 0){
     setErrorFlag(ERROR_CODEC_I2C);
   }
@@ -67,6 +78,18 @@ void CheckI2CErrors(void) {
 }
 
 void ADAU1961_I2CStart(void) {
+  #if (BOARD_AXO)
+  palSetPadMode(
+      GPIOB,
+      10,
+      PAL_MODE_ALTERNATE(4) | PAL_STM32_OTYPE_OPENDRAIN
+          | PAL_STM32_PUDR_PULLUP);
+  palSetPadMode(
+      GPIOB,
+      11,
+      PAL_MODE_ALTERNATE(4) | PAL_STM32_OTYPE_OPENDRAIN
+          | PAL_STM32_PUDR_PULLUP);
+  #else
   palSetPadMode(
       GPIOH,
       7,
@@ -77,11 +100,12 @@ void ADAU1961_I2CStart(void) {
       8,
       PAL_MODE_ALTERNATE(4) | PAL_STM32_OTYPE_OPENDRAIN
           | PAL_STM32_PUDR_PULLUP);
-  i2cStart(&I2CD3, &i2cfg2);
+  #endif
+  i2cStart(&I2CD, &i2cfg2);
 }
 
 void ADAU1961_I2CStop(void) {
-  i2cStop(&I2CD3);
+  i2cStop(&I2CD);
 }
 
 uint8_t ADAU1961_ReadRegister(uint16_t RegisterAddr) {
@@ -89,18 +113,18 @@ uint8_t ADAU1961_ReadRegister(uint16_t RegisterAddr) {
   i2ctxbuf[0] = RegisterAddr >> 8;
   i2ctxbuf[1] = RegisterAddr;
   ADAU1961_I2CStart();
-  i2cAcquireBus(&I2CD3);
-  status = i2cMasterTransmitTimeout(&I2CD3, ADAU1961_I2C_ADDR, i2ctxbuf, 2,
+  i2cAcquireBus(&I2CD);
+  status = i2cMasterTransmitTimeout(&I2CD, ADAU1961_I2C_ADDR, i2ctxbuf, 2,
                                     i2crxbuf, 0, tmo);
   if (status != RDY_OK) {
     CheckI2CErrors();
   }
-  status = i2cMasterReceiveTimeout(&I2CD3, ADAU1961_I2C_ADDR,
+  status = i2cMasterReceiveTimeout(&I2CD, ADAU1961_I2C_ADDR,
                                     i2crxbuf, 1, tmo);
   if (status != RDY_OK) {
     CheckI2CErrors();
   }
-  i2cReleaseBus(&I2CD3);
+  i2cReleaseBus(&I2CD);
   ADAU1961_I2CStop();
   chThdSleepMilliseconds(1);
   return i2crxbuf[0];
@@ -111,17 +135,17 @@ void ADAU1961_ReadRegister6(uint16_t RegisterAddr) {
   i2ctxbuf[0] = RegisterAddr >> 8;
   i2ctxbuf[1] = RegisterAddr;
   ADAU1961_I2CStart();
-  i2cAcquireBus(&I2CD3);
-  status = i2cMasterTransmitTimeout(&I2CD3, ADAU1961_I2C_ADDR, i2ctxbuf, 2,
+  i2cAcquireBus(&I2CD);
+  status = i2cMasterTransmitTimeout(&I2CD, ADAU1961_I2C_ADDR, i2ctxbuf, 2,
                                     i2crxbuf, 0, tmo);
   if (status != RDY_OK) {
     CheckI2CErrors();
   }
-  status = i2cMasterReceiveTimeout(&I2CD3, ADAU1961_I2C_ADDR, i2crxbuf, 6, tmo);
+  status = i2cMasterReceiveTimeout(&I2CD, ADAU1961_I2C_ADDR, i2crxbuf, 6, tmo);
   if (status != RDY_OK) {
     CheckI2CErrors();
   }
-  i2cReleaseBus(&I2CD3);
+  i2cReleaseBus(&I2CD);
   ADAU1961_I2CStop();
   chThdSleepMilliseconds(1);
 }
@@ -133,16 +157,16 @@ void ADAU1961_WriteRegister(uint16_t RegisterAddr, uint8_t RegisterValue) {
   i2ctxbuf[2] = RegisterValue;
 
   ADAU1961_I2CStart();
-  i2cAcquireBus(&I2CD3);
-  status = i2cMasterTransmitTimeout(&I2CD3, ADAU1961_I2C_ADDR, i2ctxbuf, 3,
+  i2cAcquireBus(&I2CD);
+  status = i2cMasterTransmitTimeout(&I2CD, ADAU1961_I2C_ADDR, i2ctxbuf, 3,
                                     i2crxbuf, 0, tmo);
   if (status != RDY_OK) {
     CheckI2CErrors();
-    status = i2cMasterTransmitTimeout(&I2CD3, ADAU1961_I2C_ADDR, i2ctxbuf, 3,
+    status = i2cMasterTransmitTimeout(&I2CD, ADAU1961_I2C_ADDR, i2ctxbuf, 3,
                                       i2crxbuf, 0, tmo);
     chThdSleepMilliseconds(1);
   }
-  i2cReleaseBus(&I2CD3);
+  i2cReleaseBus(&I2CD);
   ADAU1961_I2CStop();
   chThdSleepMilliseconds(1);
 
@@ -166,10 +190,10 @@ void ADAU1961_WriteRegister6(uint16_t RegisterAddr, uint8_t * RegisterValues) {
   i2ctxbuf[6] = RegisterValues[4];
   i2ctxbuf[7] = RegisterValues[5];
   ADAU1961_I2CStart();
-  i2cAcquireBus(&I2CD3);
-  status = i2cMasterTransmitTimeout(&I2CD3, ADAU1961_I2C_ADDR, i2ctxbuf, 8,
+  i2cAcquireBus(&I2CD);
+  status = i2cMasterTransmitTimeout(&I2CD, ADAU1961_I2C_ADDR, i2ctxbuf, 8,
                                     i2crxbuf, 0, TIME_INFINITE);
-  i2cReleaseBus(&I2CD3);
+  i2cReleaseBus(&I2CD);
   ADAU1961_I2CStop();
   if (status != RDY_OK) {
     CheckI2CErrors();
@@ -288,6 +312,12 @@ void codec_ADAU1961_hw_init(uint16_t samplerate) {
     ADAU1961_WriteRegister(ADAU1961_REG_R41_CPORTP1, 0xAA);
     ADAU1961_WriteRegister(ADAU1961_REG_R42_JACKDETP, 0x00);
 
+    // ADAU1761 Registers
+    ADAU1961_WriteRegister(ADAU1961_REG_R65_CLKEN0, 0x7F);
+    ADAU1961_WriteRegister(ADAU1961_REG_R66_CLKEN1, 0x03);
+    ADAU1961_WriteRegister(ADAU1961_REG_R58_SIRC, 0x01);
+    ADAU1961_WriteRegister(ADAU1961_REG_R59_SORC, 0x01);
+
     chThdSleepMilliseconds(10);
 
 
@@ -318,6 +348,14 @@ void codec_ADAU1961_hw_init(uint16_t samplerate) {
     ADAU1961_WriteRegister(ADAU1961_REG_R27_PLRMR, 0x11); // unmute Mixer6, 6dB gain
     ADAU1961_WriteRegister(ADAU1961_REG_R22_PMIXL0, 0x21); // unmute DAC, no aux mix
     ADAU1961_WriteRegister(ADAU1961_REG_R24_PMIXR0, 0x41); // unmute DAC, no aux mix
+
+
+    // // bypass converters
+    // ADAU1961_WriteRegister(ADAU1961_REG_R22_PMIXL0, 0x01); // mute Left DAC, no aux mix
+    // ADAU1961_WriteRegister(ADAU1961_REG_R23_PMIXL1, 0x06); // unmute Left Record Mixer
+    // ADAU1961_WriteRegister(ADAU1961_REG_R24_PMIXR0, 0x01); // mute Right DAC, no aux mix
+    // ADAU1961_WriteRegister(ADAU1961_REG_R25_PMIXR1, 0x60); // unmute Left Record Mixer
+
 
     ADAU1961_WriteRegister(ADAU1961_REG_R35_PWRMGMT, 0x03); //enable L&R
 
@@ -360,12 +398,12 @@ const stm32_dma_stream_t* sai_b_dma;
 void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
   sai_a = SAI1_Block_A;
   sai_b = SAI1_Block_B;
-//configure MCO - skipping bc PCM510XA does not need it
-#if(!BOARD_STM32F429DISC)
+
+#if(!BOARD_STM32F429DISC && !BOARD_SELECTOR)
   palSetPadMode(GPIOA, 8, PAL_MODE_OUTPUT_PUSHPULL);
   palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(0));
   chThdSleepMilliseconds(10);
-#elif(BOARD_STM32F429DISC)
+#elif(BOARD_STM32F429DISC || BOARD_SELECTOR)
 // release SAI
   palSetPadMode(GPIOE, 2, PAL_MODE_INPUT);
 #endif
@@ -378,7 +416,7 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
 // configure SAI
 
 // configure clock
-#if(BOARD_STM32F429DISC)
+#if(BOARD_STM32F429DISC || BOARD_SELECTOR)
 // set PLLSAI N->344, (0x158<<6)
   uint32_t pllsai_n = (0x158<<6);
 // set PLLSAI Q->7, (0x7<<24)
@@ -390,7 +428,7 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
 // start clock
   RCC->APB2ENR |= RCC_APB2ENR_SAI1EN; // SAI1 clock enable
 
-#if(BOARD_STM32F429DISC)
+#if(BOARD_STM32F429DISC || BOARD_SELECTOR)
   RCC->CR |= RCC_CR_PLLSAION; //PLLSAIenable
 #endif
 
@@ -432,9 +470,9 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
 // 10: Slave transmitter - SAI_xCR1_MODE_1
 // 11: Slave receiver - SAI_xCR1_MODE_0 | SAI_xCR1_MODE_1
 
-// SAI1_A is slave transmitter
+// SAI1_A is master transmitter
 // SAI1_B is synchronous slave receiver
-#if(BOARD_STM32F429DISC)
+#if(BOARD_STM32F429DISC || BOARD_SELECTOR)
   uint32_t block_a_cr1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2 //32bit
       | SAI_xCR1_DMAEN      //dma enable
       | SAI_xCR1_CKSTR     //data strobing edge is rising edge of SCK
@@ -445,17 +483,16 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
 #endif
   SAI1_Block_A->CR1 = block_a_cr1;
 
-  uint32_t block_b_cr1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2
+  uint32_t block_b_cr1 = SAI_xCR1_DS_0 | SAI_xCR1_DS_1 | SAI_xCR1_DS_2 //32bit
       | SAI_xCR1_SYNCEN_0 //audio block is synchronous with the other internal audio block. In this case audio block should be configured in Slave mode
       | SAI_xCR1_MODE_1 | SAI_xCR1_MODE_0 // mode
-      | SAI_xCR1_MODE_0 // mode
       | SAI_xCR1_DMAEN  //dma enable
-      | SAI_xCR1_CKSTR; //data strobing edge is rising edge of SCK
+      | SAI_xCR1_CKSTR; //data strobing edge is rising edge of SCK 
   SAI1_Block_B->CR1 = block_b_cr1;
 
   chThdSleepMilliseconds(1);
 
-#if(BOARD_STM32F429DISC)
+#if(BOARD_STM32F429DISC || BOARD_SELECTOR)
   palSetPadMode(GPIOE, 2, PAL_MODE_ALTERNATE(6));
   GPIOE->OSPEEDR |= (0b11 << (2*2));
 #endif

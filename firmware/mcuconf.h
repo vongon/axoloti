@@ -130,7 +130,11 @@
 /*
  * I2C driver system settings.
  */
-#ifdef BOARD_AXOLOTI_V05
+#if BOARD_AXO
+#define STM32_I2C_USE_I2C1                  TRUE
+#define STM32_I2C_USE_I2C2                  TRUE
+#define STM32_I2C_USE_I2C3                  TRUE
+#elif (BOARD_AXOLOTI_V05)
 #define STM32_I2C_USE_I2C1                  TRUE
 #define STM32_I2C_USE_I2C2                  FALSE
 #define STM32_I2C_USE_I2C3                  TRUE
