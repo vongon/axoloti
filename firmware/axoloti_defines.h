@@ -30,10 +30,10 @@ typedef int32_t int32buffer[BUFSIZE];
 //#define BOARD_AXOLOTI_V03 1
 #define BOARD_AXOLOTI_V05 1
 
-/* BOARD_AXOLOTI_V05 + one of these below */
+/* BOARD_AXOLOTI_V05 + one of these below for vongon board */
 //#define BOARD_STM32F429DISC 1
 //#define BOARD_SELECTOR 1
-//#define BOARD_AXO 1
+//#define BOARD_AXO 1 //ultrasheer
 
 // firmware version 1.0.0.1
 #define FWVERSION1 1
@@ -48,6 +48,8 @@ typedef int32_t int32buffer[BUFSIZE];
 #error BOARD_STM32F429DISC needs BOARD_AXOLOTI_V05 enabled as well!
 #elif (BOARD_SELECTOR && !BOARD_AXOLOTI_V05)
 #error BOARD_SELECTOR needs BOARD_AXOLOTI_V05 enabled as well!
+#elif (BOARD_AXO && !BOARD_AXOLOTI_V05)
+#error BOARD_AXO needs BOARD_AXOLOTI_V05 enabled as well!
 #else
 #error Must define board!
 #endif

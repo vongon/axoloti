@@ -329,7 +329,7 @@ void codec_ADAU1961_hw_init(uint16_t samplerate) {
     ADAU1961_WriteRegister(ADAU1961_REG_R39_SERPP,0x30);
     ADAU1961_WriteRegister(ADAU1961_REG_R39_SERPP,0xC0);
     ADAU1961_WriteRegister(ADAU1961_REG_R39_SERPP,0x00);
-  }
+  } 
 #endif
 
   {
@@ -341,21 +341,15 @@ void codec_ADAU1961_hw_init(uint16_t samplerate) {
     ADAU1961_WriteRegister(ADAU1961_REG_R19_ADCC, 0x03); // ADC enable
     ADAU1961_WriteRegister(ADAU1961_REG_R36_DACC0, 0x03); // DAC enable
 
-    ADAU1961_WriteRegister(ADAU1961_REG_R31_PLLVOL, 0xE7); // Playback Line Output Left Volume
-    ADAU1961_WriteRegister(ADAU1961_REG_R32_PLRVOL, 0xE7); // Playback Right Output Left Volume
+    ADAU1961_WriteRegister(ADAU1961_REG_R31_PLLVOL,(63<<2)+2); // +6dB
+    ADAU1961_WriteRegister(ADAU1961_REG_R32_PLRVOL,(63<<2)+2); // +6dB
 
-    ADAU1961_WriteRegister(ADAU1961_REG_R26_PLRML, 0x05); // unmute Mixer5, 6dB gain
-    ADAU1961_WriteRegister(ADAU1961_REG_R27_PLRMR, 0x11); // unmute Mixer6, 6dB gain
+    ADAU1961_WriteRegister(ADAU1961_REG_R26_PLRML, (1<<1)+1); // unmute Mixer5, 0dB gain
+    ADAU1961_WriteRegister(ADAU1961_REG_R27_PLRMR, (1<<3)+1); // unmute Mixer6, 0dB
+
+
     ADAU1961_WriteRegister(ADAU1961_REG_R22_PMIXL0, 0x21); // unmute DAC, no aux mix
     ADAU1961_WriteRegister(ADAU1961_REG_R24_PMIXR0, 0x41); // unmute DAC, no aux mix
-
-
-    // // bypass converters
-    // ADAU1961_WriteRegister(ADAU1961_REG_R22_PMIXL0, 0x01); // mute Left DAC, no aux mix
-    // ADAU1961_WriteRegister(ADAU1961_REG_R23_PMIXL1, 0x06); // unmute Left Record Mixer
-    // ADAU1961_WriteRegister(ADAU1961_REG_R24_PMIXR0, 0x01); // mute Right DAC, no aux mix
-    // ADAU1961_WriteRegister(ADAU1961_REG_R25_PMIXR1, 0x60); // unmute Left Record Mixer
-
 
     ADAU1961_WriteRegister(ADAU1961_REG_R35_PWRMGMT, 0x03); //enable L&R
 
@@ -364,8 +358,8 @@ void codec_ADAU1961_hw_init(uint16_t samplerate) {
     ADAU1961_WriteRegister(ADAU1961_REG_R6_RMIXR0, 0x01); // mixer2 enable, mute LINP and LINR
     ADAU1961_WriteRegister(ADAU1961_REG_R7_RMIXR1, 0x08); // unmute PGA, aux mute, 0 dB boost
 
-    ADAU1961_WriteRegister(ADAU1961_REG_R8_LDIVOL, 0x43); // 0dB gain
-    ADAU1961_WriteRegister(ADAU1961_REG_R9_RDIVOL, 0x43); // 0dB gain
+    ADAU1961_WriteRegister(ADAU1961_REG_R8_LDIVOL, (10<<2)+3); // 16 = 0dB In
+    ADAU1961_WriteRegister(ADAU1961_REG_R9_RDIVOL, (10<<2)+3); // 16 = 0dB In
 
     // capless headphone config
     ADAU1961_WriteRegister(ADAU1961_REG_R33_PMONO, 0x03);   //MONOM+MOMODE

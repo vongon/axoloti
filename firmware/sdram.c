@@ -143,7 +143,7 @@ void SDRAM_Init(void) {
 void configSDRAM(void) {
   SDRAM_Init();
 
-#if 1
+#if 0
   int qsource[16];
   int qdest[16];
 
@@ -178,6 +178,9 @@ void memTest(void) {
   uint32_t tmp = -1;
   // linear write with linear congruential generator values
   // 362 ms execution cycle at 8MB : 22MB/s read+write+compute
+  //palSetPadMode(GPIOA, 7, PAL_MODE_OUTPUT_PUSHPULL);
+  //palWritePad(GPIOA, 7, 1);
+
   for (iter = 0; iter < niter; iter++) {
     uint32_t x = iter;
     // write
@@ -199,30 +202,35 @@ void memTest(void) {
       }
     }
   }
+  //palWritePad(GPIOA, 7, 0);
+
   // scattered byte write at linear congruential generator addresses
   // 300 ms execution time for one iteration: 3.3M scattered read+write per second
   // equals 68
 
   // THIS DOES NOT WORK FOR DECREASED MEM SIZE
-  // for (iter = 0; iter < niter2; iter++) {
-  //   uint32_t x = iter;
-  //   // write
-  //   for (i = 0; i < 1024 * 1024; i++) {
-  //     x = (a * x) + c;
-  //     ((volatile uint8_t *)base)[x & (memSize - 1)] = (uint8_t)i;
-  //   }
-  //   // read/verify
-  //   x = iter;
-  //   for (i = 0; i < 1024 * 1024; i++) {
-  //     x = (a * x) + c;
-  //     if (((volatile uint8_t *)base)[x & (memSize - 1)] != (uint8_t)i) {
-  //       //setErrorFlag(ERROR_SDRAM);
-  //       while (1) {
-  //         chThdSleepMilliseconds(100);
-  //       }
-  //     }
-  //   }
-  // }
+  //palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL);
+  //palWritePad(GPIOA, 6, 1);
+  for (iter = 0; iter < niter2; iter++) {
+    uint32_t x = iter;
+    // write
+    for (i = 0; i < 1024 * 1024; i++) {
+      x = (a * x) + c;
+      ((volatile uint8_t *)base)[x & (memSize - 1)] = (uint8_t)i;
+    }
+    // read/verify
+    x = iter;
+    for (i = 0; i < 1024 * 1024; i++) {
+      x = (a * x) + c;
+      if (((volatile uint8_t *)base)[x & (memSize - 1)] != (uint8_t)i) {
+        //setErrorFlag(ERROR_SDRAM);
+        while (1) {
+          chThdSleepMilliseconds(100);
+        }
+      }
+    }
+  }
+  //palWritePad(GPIOA, 6, 0);
 }
 
 /**
