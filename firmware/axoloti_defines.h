@@ -33,7 +33,7 @@ typedef int32_t int32buffer[BUFSIZE];
 /* BOARD_AXOLOTI_V05 + one of these below for vongon board */
 //#define BOARD_STM32F429DISC 1
 //#define BOARD_SELECTOR 1
-//#define BOARD_AXO 1 //ultrasheer
+#define BOARD_AXO 1 //ultrasheer
 
 // firmware version 1.0.0.1
 #define FWVERSION1 1
