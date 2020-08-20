@@ -33,10 +33,10 @@ private_key.*
 axoloti.prefs
 
 #libraries
-patches
-objects
-axoloti-contrib
-axoloti-factory
+#patches
+#objects
+#axoloti-contrib
+#axoloti-factory
 
 
 #Version file
