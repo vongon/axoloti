@@ -101,11 +101,13 @@ void ADAU1961_I2CStart(void) {
       PAL_MODE_ALTERNATE(4) | PAL_STM32_OTYPE_OPENDRAIN
           | PAL_STM32_PUDR_PULLUP);
   #endif
+  chMtxLock(&Mutex_DMAStream_1_7);
   i2cStart(&I2CD, &i2cfg2);
 }
 
 void ADAU1961_I2CStop(void) {
   i2cStop(&I2CD);
+  chMtxUnlock();
 }
 
 uint8_t ADAU1961_ReadRegister(uint16_t RegisterAddr) {
