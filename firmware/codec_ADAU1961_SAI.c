@@ -175,7 +175,7 @@ void ADAU1961_WriteRegister(uint16_t RegisterAddr, uint8_t RegisterValue) {
   static uint8_t rd;
   rd = ADAU1961_ReadRegister(RegisterAddr);
   if (rd != RegisterValue) {
-//    setErrorFlag(ERROR_CODEC_I2C);
+    setErrorFlag(ERROR_CODEC_I2C);
   } else {
   }
   chThdSleepMilliseconds(1);

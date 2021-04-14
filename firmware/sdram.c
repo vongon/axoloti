@@ -195,7 +195,7 @@ void memTest(void) {
       x = (a * x) + c;
       tmp = ((volatile uint32_t *)base)[i];
       if (tmp != x) {
-        //setErrorFlag(ERROR_SDRAM);
+        setErrorFlag(ERROR_SDRAM);
         while (1) {
           chThdSleepMilliseconds(100);
         }
@@ -223,7 +223,7 @@ void memTest(void) {
     for (i = 0; i < 1024 * 1024; i++) {
       x = (a * x) + c;
       if (((volatile uint8_t *)base)[x & (memSize - 1)] != (uint8_t)i) {
-        //setErrorFlag(ERROR_SDRAM);
+        setErrorFlag(ERROR_SDRAM);
         while (1) {
           chThdSleepMilliseconds(100);
         }
